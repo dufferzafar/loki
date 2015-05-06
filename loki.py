@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
-from datetime import datetime
+import io
 import os
 import sys
 import subprocess
+from datetime import datetime
 
 
 from PyQt4 import uic
@@ -49,6 +50,11 @@ class loki(QMainWindow, form_class):
         self.searchBtn.clicked.connect(self.search)
         self.query.returnPressed.connect(self.searchBtn.click)
 
+        self.connect(self.results, SIGNAL("itemDoubleClicked(QTreeWidgetItem*, int)"), self.onDoubleClickItem)
+        self.results.keyPressEvent = self.onKeyPressEvent
+
+        self.query.setFocus()
+
         # Todo: Add these things to Menus too?
         # http://zetcode.com/gui/pyqt4/menusandtoolbars/
         QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
@@ -81,8 +87,9 @@ class loki(QMainWindow, form_class):
 
         items = []
         count = 0
-        while locate.poll() is None:
-            path = locate.stdout.readline().decode("utf-8").strip()
+        for line in io.open(locate.stdout.fileno()):
+
+            path = line.rstrip('\n')
             parts = os.path.split(path)
 
             # Skip non existent files
@@ -139,6 +146,30 @@ class loki(QMainWindow, form_class):
         self.results.setSortingEnabled(True)
         if self.itemCount < 10000:
             self.results.sortByColumn(0, 0)
+
+        # print("Search finished!")
+
+    def onDoubleClickItem(self, item, column):
+        print (item, column)
+
+    def onKeyPressEvent(self, event):
+        if event.key() == Qt.Key_Return:
+            item = self.results.currentItem()
+
+            # Ctrl + Enter - Launch File
+            if event.modifiers() == Qt.ControlModifier:
+                path = os.path.join(item.text(1), item.text(0))
+
+            # Enter - Open Folder
+            else:
+                path = os.path.join(item.text(1))
+
+            subprocess.Popen(['xdg-open', path])
+
+            return
+
+        QTreeWidget.keyPressEvent(self.results, event)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
