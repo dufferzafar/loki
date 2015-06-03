@@ -6,7 +6,6 @@ import sys
 import subprocess
 from datetime import datetime
 
-
 from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -17,6 +16,9 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 # Load the UI
 form_class = uic.loadUiType("main.ui")[0]
+
+exclude_dirs = ["node_modules/", ".git/", "__pycache__/"]
+exclude_files = [".pyc"]
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -82,7 +84,7 @@ class loki(QMainWindow, form_class):
         self.repaint()
 
         # Launch Command
-        locate = subprocess.Popen(['locate', query, '-l', '10000', '--existing'],
+        locate = subprocess.Popen(['locate', '-r', query, '-l', '10000', '--existing'],
                                   stdout=subprocess.PIPE)
 
         items = []
@@ -90,6 +92,15 @@ class loki(QMainWindow, form_class):
         for line in io.open(locate.stdout.fileno()):
 
             path = line.rstrip('\n')
+
+            # If the path contains an excluded directory
+            if any([x in path for x in exclude_dirs]):
+                continue
+
+            # If the file has an excluded extension
+            if any([path.endswith(x) for x in exclude_files]):
+                continue
+
             parts = os.path.split(path)
 
             # Skip non existent files
