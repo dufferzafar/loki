@@ -34,6 +34,72 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f %s%s" % (num, 'Y', suffix)
 
 
+class SearchThread(QThread):
+    update = pyqtSignal(int, list)
+    finished = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(SearchThread, self).__init__(parent)
+
+    def setup(self, query):
+        self.query = query
+
+    def run(self):
+        # Launch Command
+        locate = subprocess.Popen(['locate', '-r', self.query, '-l', '10000', '--existing'],
+                                  stdout=subprocess.PIPE)
+
+        items = []
+        count = 0
+        for line in io.open(locate.stdout.fileno()):
+
+            path = line.rstrip('\n')
+
+            # If the path contains an excluded directory
+            if any([x in path for x in exclude_dirs]):
+                continue
+
+            # If the file has an excluded extension
+            if any([path.endswith(x) for x in exclude_files]):
+                continue
+
+            # Skip non existent files
+            try:
+                info = os.stat(path)
+            except FileNotFoundError:
+                continue
+
+            parts = os.path.split(path)
+            item = QTreeWidgetItem()
+
+            # Name & Path
+            item.setText(0, parts[1])
+            item.setText(1, parts[0])
+
+            # Size & Date Modified
+            item.setText(2, sizeof_fmt(info.st_size))
+            time = datetime.utcfromtimestamp(info.st_mtime) \
+                .strftime('%d/%m/%Y %H:%M:%S')
+            item.setText(3, time)
+
+            item.setSizeHint(0, QSize(450, 20))
+            item.setSizeHint(1, QSize(550, 20))
+            item.setSizeHint(2, QSize(75, 20))
+            item.setSizeHint(3, QSize(200, 20))
+
+            items.append(item)
+
+            # Todo: Improve
+            if len(items) == 500:
+                self.update.emit(count, items)
+                items = []
+                count += 500
+
+        if items:
+            self.update.emit(count, items)
+
+        self.terminate()
+
 class loki(QMainWindow, form_class):
 
     def __init__(self, parent=None):
@@ -83,71 +149,21 @@ class loki(QMainWindow, form_class):
         self.results.setSortingEnabled(False)
         self.repaint()
 
-        # Launch Command
-        locate = subprocess.Popen(['locate', '-r', query, '-l', '10000', '--existing'],
-                                  stdout=subprocess.PIPE)
+        thread = SearchThread(self)
+        thread.update.connect(self.update_results)
+        thread.terminated.connect(self.finished)
+        thread.setup(query)
+        thread.start()
 
-        items = []
-        count = 0
-        for line in io.open(locate.stdout.fileno()):
-
-            path = line.rstrip('\n')
-
-            # If the path contains an excluded directory
-            if any([x in path for x in exclude_dirs]):
-                continue
-
-            # If the file has an excluded extension
-            if any([path.endswith(x) for x in exclude_files]):
-                continue
-
-            parts = os.path.split(path)
-
-            # Skip non existent files
-            try:
-                info = os.stat(path)
-            except FileNotFoundError:
-                continue
-
-            item = QTreeWidgetItem()
-
-            # Name & Path
-            item.setText(0, parts[1])
-            item.setText(1, parts[0])
-
-            # Size & Date Modified
-            item.setText(2, sizeof_fmt(info.st_size))
-            time = datetime.utcfromtimestamp(
-                info.st_mtime).strftime('%d/%m/%Y %H:%M:%S')
-            item.setText(3, time)
-
-            item.setSizeHint(0, QSize(450, 20))
-            item.setSizeHint(1, QSize(550, 20))
-            item.setSizeHint(2, QSize(75, 20))
-            item.setSizeHint(3, QSize(200, 20))
-
-            items.append(item)
-
-            # Todo: Improve
-            if len(items) == 500:
-                self.results.insertTopLevelItems(count, items)
-                self.results.resizeColumnToContents(0)
-                self.results.resizeColumnToContents(1)
-                self.results.resizeColumnToContents(2)
-                self.results.resizeColumnToContents(3)
-                self.results.repaint()
-                items = []
-                count += 500
-
-        if items:
-            self.results.insertTopLevelItems(count, items)
-
-        # Resize Columns
+    def update_results(self, count, items):
+        self.results.insertTopLevelItems(count, items)
         self.results.resizeColumnToContents(0)
         self.results.resizeColumnToContents(1)
         self.results.resizeColumnToContents(2)
         self.results.resizeColumnToContents(3)
+        self.results.repaint()
 
+    def finished(self):
         self.status.showMessage("Ready")
 
         self.itemCount = self.results.topLevelItemCount()
@@ -158,10 +174,8 @@ class loki(QMainWindow, form_class):
         if self.itemCount < 10000:
             self.results.sortByColumn(0, 0)
 
-        # print("Search finished!")
-
     def onDoubleClickItem(self, item, column):
-        print (item, column)
+        print(item, column)
 
     def onKeyPressEvent(self, event):
         if event.key() == Qt.Key_Return:
