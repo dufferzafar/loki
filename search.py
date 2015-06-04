@@ -23,6 +23,29 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f %s%s" % (num, 'Y', suffix)
 
 
+class ResultItem(QTreeWidgetItem):
+
+    def __lt__(self, other):
+        if (not isinstance(other, ResultItem)):
+            return super(ResultItem, self).__lt__(other)
+
+        tree = self.treeWidget()
+        if (not tree):
+            column = 0
+        else:
+            column = tree.sortColumn()
+
+        return self._sortData.get(column, self.text(column)) < \
+            other._sortData.get(column, other.text(column))
+
+    def __init__(self, *args):
+        super(ResultItem, self).__init__(*args)
+        self._sortData = {}
+
+    def setSortData(self, column, data):
+        self._sortData[column] = data
+
+
 class SearchThread(QThread):
     update = pyqtSignal(int, list)
     finished = pyqtSignal()
@@ -35,7 +58,7 @@ class SearchThread(QThread):
 
     def run(self):
         # Launch Command
-        locate = subprocess.Popen(['locate', '-r', self.query, '-l', '10000', '--existing'],
+        locate = subprocess.Popen(['locate', "-b", self.query, '-l', '10000', '--existing'],
                                   stdout=subprocess.PIPE)
 
         items = []
@@ -59,7 +82,7 @@ class SearchThread(QThread):
                 continue
 
             parts = os.path.split(path)
-            item = QTreeWidgetItem()
+            item = ResultItem()
 
             # Name & Path
             item.setText(0, parts[1])
@@ -67,6 +90,8 @@ class SearchThread(QThread):
 
             # Size & Date Modified
             item.setText(2, sizeof_fmt(info.st_size))
+            item.setSortData(2, info.st_size)
+
             time = datetime.utcfromtimestamp(info.st_mtime) \
                 .strftime('%d/%m/%Y %H:%M:%S')
             item.setText(3, time)
@@ -76,13 +101,13 @@ class SearchThread(QThread):
             item.setSizeHint(2, QSize(75, 20))
             item.setSizeHint(3, QSize(200, 20))
 
+            count += 1
             items.append(item)
 
             # Todo: Improve
-            if len(items) == 1000:
+            if not (count % 300):
                 self.update.emit(count, items)
                 items = []
-                count += 500
 
         if items:
             self.update.emit(count, items)

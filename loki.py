@@ -15,7 +15,7 @@ import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 # Load the UI
-form_class = uic.loadUiType("/home/dufferzafar/dev/loki/main.ui")[0]
+form_class = uic.loadUiType("main.ui")[0]
 
 
 class loki(QMainWindow, form_class):
