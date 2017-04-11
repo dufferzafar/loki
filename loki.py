@@ -39,6 +39,9 @@ class loki(QMainWindow, form_class):
         self.connect(self.results, SIGNAL("itemDoubleClicked(QTreeWidgetItem*, int)"), self.onDoubleClickItem)
         self.results.keyPressEvent = self.onKeyPressEvent
 
+        # Make TreeWidget appear like a simple list of items
+        self.results.setRootIsDecorated(False)
+
         self.query.setFocus()
 
         # Todo: Add these things to Menus too?
