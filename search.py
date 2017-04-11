@@ -6,6 +6,9 @@ from datetime import datetime
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+# TODO: Find this dynamically using Qt
+SCREEN_WIDTH = 1920
+
 exclude_dirs = ["node_modules/", ".git/", "__pycache__/"]
 exclude_files = [".pyc"]
 
@@ -88,18 +91,20 @@ class SearchThread(QThread):
             item.setText(0, parts[1])
             item.setText(1, parts[0])
 
-            # Size & Date Modified
+            # Size
             item.setText(2, sizeof_fmt(info.st_size))
             item.setSortData(2, info.st_size)
 
+            # Date Modified
             time = datetime.utcfromtimestamp(info.st_mtime) \
                 .strftime('%d/%m/%Y %H:%M:%S')
             item.setText(3, time)
 
-            item.setSizeHint(0, QSize(450, 20))
-            item.setSizeHint(1, QSize(550, 20))
-            item.setSizeHint(2, QSize(75, 20))
-            item.setSizeHint(3, QSize(200, 20))
+            # Set width of columns depending on screen width
+            item.setSizeHint(0, QSize(SCREEN_WIDTH * 0.31, 30))
+            item.setSizeHint(1, QSize(SCREEN_WIDTH * 0.45, 30))
+            item.setSizeHint(2, QSize(SCREEN_WIDTH * 0.06, 30))
+            item.setSizeHint(3, QSize(SCREEN_WIDTH * 0.15, 30))
 
             count += 1
             items.append(item)
