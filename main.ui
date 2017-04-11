@@ -67,6 +67,14 @@
       </item>
       <item>
        <widget class="QTreeWidget" name="results">
+        <property name="font">
+         <font>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="uniformRowHeights">
+         <bool>true</bool>
+        </property>
         <property name="sortingEnabled">
          <bool>true</bool>
         </property>
@@ -105,7 +113,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>25</height>
+     <height>30</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
