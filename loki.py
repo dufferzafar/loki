@@ -51,7 +51,7 @@ class loki(QMainWindow, form_class):
         if len(sys.argv) >= 2:
             self.query.setText(sys.argv[1])
             # Todo: Display window and begin searching
-            # self.search()
+            self.search()
 
     def search(self):
         """ Run locate command and display results. """
@@ -87,10 +87,9 @@ class loki(QMainWindow, form_class):
         self.itemCount = self.results.topLevelItemCount()
         self.itemStatus.setText("%d Items" % self.itemCount)
 
-        # Sort by Name
+        # Sort by Size - Descending
         self.results.setSortingEnabled(True)
-        if self.itemCount < 10000:
-            self.results.sortByColumn(0, 0)
+        self.results.sortByColumn(2, 1)
 
     def onDoubleClickItem(self, item, column):
         print(item, column)
